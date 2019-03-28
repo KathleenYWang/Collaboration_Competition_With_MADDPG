@@ -4,7 +4,11 @@
 
 from ddpg import DDPGAgent
 import torch
-from utilities import soft_update, transpose_to_tensor, transpose_list
+from utilities import soft_update, transpose_to_tensor, transpose_list 
+from collections import deque
+import random
+
+
 #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = 'cpu'
 
@@ -112,5 +116,28 @@ class MADDPG:
             soft_update(ddpg_agent.target_actor, ddpg_agent.actor, self.tau)
             soft_update(ddpg_agent.target_critic, ddpg_agent.critic, self.tau)
             
-            
+
+
+class ReplayBuffer:
+    def __init__(self,size):
+        self.size = size
+        self.deque = deque(maxlen=self.size)
+
+    def push(self,transition):
+        """push into the buffer"""
+        
+        input_to_buffer = transpose_list(transition)
+    
+        for item in input_to_buffer:
+            self.deque.append(item)
+
+    def sample(self, batchsize):
+        """sample from the buffer"""
+        samples = random.sample(self.deque, batchsize)
+
+        # transpose list of list
+        return transpose_list(samples)
+
+    def __len__(self):
+        return len(self.deque)
   
