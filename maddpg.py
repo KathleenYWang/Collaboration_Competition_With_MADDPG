@@ -15,13 +15,15 @@ device = 'cpu'
 
 
 class MADDPG:
-    def __init__(self, discount_factor=0.95, tau=0.02):
+    def __init__(self, in_a, h_in_a, h_o_a, o_a, in_c, h_in_c, h_o_c, discount_factor=0.95, tau=0.02):
         super(MADDPG, self).__init__()
 
         # critic input = obs_full + actions = 14+2+2+2=20
-        self.maddpg_agent = [DDPGAgent(14, 16, 8, 2, 20, 32, 16), 
-                             DDPGAgent(14, 16, 8, 2, 20, 32, 16), 
-                             DDPGAgent(14, 16, 8, 2, 20, 32, 16)]
+        # DDPGAgent: in_actor (input dim), hidden_in_actor, hidden_out_actor, out_actor, in_critic, hidden_in_critic, hidden_out_critic
+        # Each DDPGAgent contains an actor and a critic. Here we have two actors, hence 2 agents
+        
+        self.maddpg_agent = [DDPGAgent(in_a, h_in_a, h_o_a, o_a, in_c, h_in_c, h_o_c), 
+                             DDPGAgent(in_a, h_in_a, h_o_a, o_a, in_c, h_in_c, h_o_c)]
         
         self.discount_factor = discount_factor
         self.tau = tau
