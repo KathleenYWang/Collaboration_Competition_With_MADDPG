@@ -112,6 +112,13 @@ class MADDPG:
         # [ 0.5996,  0.4146],
         # [ 0.2894,  0.1135],
         # [ 0.4787,  0.2718]])
+        """ 
+        target_critic_input:        
+        use next obs states,
+        use target_act to obtain actions from both agents
+        Combine both states and actions as input to agent.target_critic
+        This is used to obtain y from target critic to train critic
+        """
         
         
         
@@ -133,8 +140,6 @@ class MADDPG:
         #print("maddpg target crit input")
         #print(target_critic_input)    
         
-        
-        
         target_critic_input = target_critic_input.view(num_agent, batch, target_critic_input.size()[-1])
        
         
@@ -154,14 +159,25 @@ class MADDPG:
         #print("q_next")
         #print(q_next)
         
+        # this returns one y per batch, this is the actual 'y' for that agent
         y = reward[agent_number].view(-1, 1) + self.discount_factor * q_next * (1 - done[agent_number].view(-1, 1))
         #print("y")
         #print(y)        
         
+        """ 
+        critic_input:        
+        use current obs states,
+        use current actions as given from sample experience
+        Combine both states and actions as input to agent.critic
+        This is used to obtain q from critic to compare to the y from critic_target
+        """
+        
+        
         action = torch.cat(action)
         
         #print("obs_full_reshape.t()",obs_full_reshape.t().size() )
-        #print("action.t()",action.t().size() )           
+        #print("action.t()",action.t().size() )   
+        # crit_input is using current states, target_crit is using next states
         critic_input = torch.cat((obs_full_reshape.t(), action.t())).t().to(device)
         
         critic_input = critic_input.view(num_agent, batch, critic_input.size()[-1])
@@ -172,19 +188,30 @@ class MADDPG:
         #print("maddpg agent crit input")
         #print(critic_input)
         #print(" ")        
+        
         q = agent.critic(critic_input)
 
         huber_loss = torch.nn.SmoothL1Loss()
         critic_loss = huber_loss(q, y.detach())
         critic_loss.backward()
-        #torch.nn.utils.clip_grad_norm_(agent.critic.parameters(), 0.5)
+        torch.nn.utils.clip_grad_norm_(agent.critic.parameters(), 1)
         agent.critic_optimizer.step()
 
         #update actor network using policy gradient
         agent.actor_optimizer.zero_grad()
+        
         # make input to agent
         # detach the other agents to save computation
         # saves some time for computing derivative
+        
+        """ 
+        q_input2:        
+        use current obs states,
+        obtain the actions that our current actors would have gotten, not the actions as given from experience
+        Combine both states and actions as input to agent.critic
+        This is used to obtain q from critic to update the current agent.actor
+        """        
+        
         q_input = [ self.maddpg_agent[i].actor(ob) if i == agent_number \
                    else self.maddpg_agent[i].actor(ob).detach()
                    for i, ob in enumerate(obs_full_org) ]
@@ -199,19 +226,17 @@ class MADDPG:
         #print(" ")        
         # combine all the actions and observations for input to critic
         # many of the obs are redundant, and obs[1] contains all useful information already
-        q_input2 = torch.cat((obs_full_reshape.t(), q_input.t())).t()
-        
+        q_input2 = torch.cat((obs_full_reshape.t(), q_input.t())).t()        
         q_input2 = q_input2.view(num_agent, batch, q_input2.size()[-1])
-
         q_input2 = torch.cat(list(map(torch.cat,zip(*q_input2)))).view(batch,-1)
                 
         #print("maddpg agent q2 input cat")
         #print(q_input2)     
         #print(" ")        
         # get the policy gradient
-        actor_loss = -agent.critic(q_input2).mean()
+        actor_loss = - agent.critic(q_input2).mean()
         actor_loss.backward()
-        #torch.nn.utils.clip_grad_norm_(agent.actor.parameters(),0.5)
+        torch.nn.utils.clip_grad_norm_(agent.actor.parameters(),1)
         agent.actor_optimizer.step()
 
         al = actor_loss.cpu().detach().item()

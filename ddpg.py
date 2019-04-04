@@ -36,13 +36,14 @@ class DDPGAgent:
     def act(self, obs, noise=0.0):
         obs = obs.to(device)
         action = self.actor(obs) + noise*self.noise.noise()
+        #return torch.clamp(action, min=-1, max=1) 
         return action
 
     def target_act(self, obs, noise=0.0):
         obs = obs.to(device)
         action = self.target_actor(obs) + noise*self.noise.noise()
+        # return torch.clamp(action, min=-1, max=1) 
         return action
-
           
 # from https://github.com/songrotek/DDPG/blob/master/ou_noise.py
 class OUNoise:

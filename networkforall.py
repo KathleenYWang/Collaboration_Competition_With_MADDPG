@@ -15,14 +15,19 @@ class Network(nn.Module):
         """self.input_norm = nn.BatchNorm1d(input_dim)
         self.input_norm.weight.data.fill_(1)
         self.input_norm.bias.data.fill_(0)"""
-
-        self.fc1 = nn.Linear(input_dim,hidden_in_dim)
-        self.fc2 = nn.Linear(hidden_in_dim,hidden_out_dim)
-        self.fc3 = nn.Linear(hidden_out_dim,output_dim)
+        
+        #self.ln0 = nn.functional.layer_norm(input_dim)
+        #self.ln0 = nn.functional.layer_norm(input_dim)
+            
+        self.fc1 = nn.utils.weight_norm(nn.Linear(input_dim,hidden_in_dim))       
+        self.fc2 = nn.utils.weight_norm(nn.Linear(hidden_in_dim,hidden_out_dim))   
+        self.fc3 = nn.utils.weight_norm(nn.Linear(hidden_out_dim,output_dim))
         self.nonlin = f.relu #leaky_relu
         self.actor = actor
         #self.reset_parameters()
 
+
+        
     def reset_parameters(self):
         self.fc1.weight.data.uniform_(*hidden_init(self.fc1))
         self.fc2.weight.data.uniform_(*hidden_init(self.fc2))
@@ -31,15 +36,17 @@ class Network(nn.Module):
     def forward(self, x):
         if self.actor:
             # return a vector of the force
-            h1 = self.nonlin(self.fc1(x))
 
+            #x = self.ln0(x)
+            h1 = self.nonlin(self.fc1(x))
             h2 = self.nonlin(self.fc2(h1))
             h3 = (self.fc3(h2))
-            norm = torch.norm(h3)
+            #norm = torch.norm(h3)
             
             # h3 is a 2D vector (a force that is applied to the agent)
             # we bound the norm of the vector to be between 0 and 10
-            return f.tanh(norm)*h3/norm if norm > 0 else h3
+            return f.tanh(h3)
+
         
         else:
             # critic network simply outputs a number
