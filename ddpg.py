@@ -1,5 +1,11 @@
-# individual network settings for each actor + critic pair
-# see networkforall for details
+"""
+DDPG Agent Object 
+@author: udacity, KathleenWang
+individual network settings for each actor + critic pair
+see networkforall for details
+Created on 4/7/19
+""" 
+
 
 from networkforall import Actor, Critic
 from utilities import hard_update, gumbel_softmax, onehot_from_logits, transpose_to_tensor, transpose_list 
@@ -8,9 +14,7 @@ import torch
 import numpy as np
 import random
 import copy
-# add OU noise for exploration
 
-#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 DEVICE = 'cpu'
 
 
@@ -63,8 +67,7 @@ class DDPGAgent:
         self.noise.reset()
  
 
-   
-# ----------------------------------------- updating --------------------------------------- #            
+         
     def learn(self, samples, pred_actions, target_actions, agent_num, discount_factor=0.99):
         """Update policy and value parameters using given batch of experience tuples.
         Q_targets = r + γ * critic_target(next_state, actor_target(next_state))
@@ -90,113 +93,53 @@ class DDPGAgent:
         # next_states dimension of 1 tensors of [[Batch [1X24]], [Batch [1X24]]], this goes into target_act
         
         num_agent, batch, state_size =  states.size()
-        #print("samples")
-        #print(samples)
-        #print("")
-        #print("actions org")
-        #print(actions)
-        #print("")        
-        #print("pred_actions org")
-        #print(pred_actions)
-        #print("")  
-        #print("target_actions org")
-        #print(target_actions)
-        #print("")       
-        #actions = torch.cat(actions, dim = 0)     
         actions = torch.cat(actions, dim = -1)
-        
 
-        #print("actions transpose")
-        #print(actions)
-        #print("")  
-        #print("next_full_state")
-        #print(next_full_state)
-        
-        #print("dones")
-        #print(dones)
-        
-
-        
         target_actions = torch.cat(target_actions, dim = -1) 
-        #print(next_full_state.shape)
-        #print(target_actions.shape)        
-        #print(torch.cat((next_full_state, target_actions), dim= -1))
-        #print(torch.cat((full_state, actions), dim= -1))
+
 
         q_next = self.target_critic(next_full_state.to(DEVICE), target_actions.to(DEVICE))
-        #print("q_next", q_next)
-        #print("discount_factor * q_next * (1 - dones[agent_num].view(-1, 1))",discount_factor * q_next * (1 - dones[agent_num].view(-1, 1)))
-        #print("rewards[agent_num].view(-1, 1) ",rewards[agent_num].view(-1, 1) )
-        
-
+ 
         Q_crit_targets = rewards[agent_num].view(-1, 1) + discount_factor * q_next * (1 - dones[agent_num].view(-1, 1))
-        #print("Q_crit_targets",Q_crit_targets)       
+ 
         # ---------------------------- update critic ---------------------------- #
         # each current critic takes all the states and all the actions
 
         
-        Q_cur_crit = self.critic(full_state.to(DEVICE), actions.to(DEVICE))
-        #print("Q_cur_crit")
-        #print(Q_cur_crit)    
+        Q_cur_crit = self.critic(full_state.to(DEVICE), actions.to(DEVICE))   
 
         critic_loss = torch.nn.functional.mse_loss(Q_cur_crit, Q_crit_targets.detach())
-        #print()
-        #print("start learning",agent_num)
 
-        #print("critic_loss", critic_loss)
-        # Minimize the loss
-        #print("critic.parameters")
-        #print(list(self.critic.parameters())[0])
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
-        # torch.nn.utils.clip_grad_norm(self.critic.parameters(), 1)        
+    
         self.critic_optimizer.step()
-        #print("critic.parameters after update")
-        #print(list(self.critic.parameters())[0])
-        #---------------------------- get pred actions NOT UPDATED----------------------------#
+
+        #---------------------------- get pred actions----------------------------#
         
-        
+        # obtain the current predicted actions from current agent so it can be updated
+        # actions from the other agent was given as input from MADDPG agent
         cur_agent_pred_actions = self.actor(states[agent_num]) 
         pred_actions_cur = [cur_agent_pred_actions  if i == agent_num \
                             else pred_actions[i].detach()
                             for i in range(num_agent)]
         pred_actions_cur = torch.cat(pred_actions_cur, dim = -1) 
-        #print("cur_agent_pred_actions")
-        #print(cur_agent_pred_actions)
-        #print("pred_actions_cur")
-        #print(pred_actions_cur)
-        #print("agent_num")
-        #print(agent_num)
-        #print("pred_actions provided")
-        #print(pred_actions)
+
                 
         # ---------------------------- update actor ---------------------------- #
         # Compute actor loss
 
-        actor_loss = - self.critic(full_state.to(DEVICE), pred_actions_cur.to(DEVICE)).mean()
-                
-        # Minimize the online critic loss
-        #print(" actor.parameters")
-        #print(list(self.actor.parameters())[0])        
+        actor_loss = - self.critic(full_state.to(DEVICE), pred_actions_cur.to(DEVICE)).mean()  
         
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
-        #torch.nn.utils.clip_grad_norm(self.actor.parameters(), 1)            
+           
         self.actor_optimizer.step()
-        #print("actor_loss", actor_loss)
 
-        #print(" actor.parameters after update")
-        #print(list(self.actor.parameters())[0]  ) 
-        #print("fininshed learning")
-        #print()
         self.updated_times += 1
-        if self.updated_times % 2000 == 0:
-            print("actor", actor_loss.item(), "critic",critic_loss.item())
-            
-        
-        
 
-# ---------------------------- below no need update ---------------------------- #         
+
+            
 class OUNoise:
     """Ornstein-Uhlenbeck process."""
 
@@ -218,6 +161,6 @@ class OUNoise:
         # normal noises        
         dx = self.theta * (self.mu - x) + self.sigma * np.random.standard_normal(len(x))
         # random noises
-        # dx = self.theta * (self.mu - x) + self.sigma * np.array([random.random() for i in range(len(x))])
+
         self.state = x + dx
         return torch.tensor(self.state).float()

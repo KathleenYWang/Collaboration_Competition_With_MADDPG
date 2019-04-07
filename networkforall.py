@@ -1,4 +1,8 @@
-                        
+"""
+Neural net setup for MADDPG agents
+@author: udacity, KathleenWang
+Created on 4/7/19
+"""                       
 import numpy as np
 
 import torch

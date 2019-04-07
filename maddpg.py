@@ -1,3 +1,8 @@
+"""
+MADDPG Agent Object
+@author: udacity, KathleenWang
+Created on 4/7/19
+"""       
 # main code that contains the neural network setup
 # policy + critic updates
 # see ddpg.py for other details in the network
@@ -10,7 +15,6 @@ import random
 import numpy as np
 
 
-#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = 'cpu'
 
 
@@ -19,13 +23,11 @@ class MADDPG:
     def __init__(self, in_a, h_in_a, h_o_a, o_a, in_c_s, in_c_a, h_in_c, h_o_c, seedn,  lr_actor, lr_critic, discount_factor, tau):
         super(MADDPG, self).__init__()
 
-        # critic input = obs_full + actions = 14+2+2+2=20
-        # DDPGAgent: in_actor (input dim), hidden_in_actor, hidden_out_actor, out_actor, in_critic, hidden_in_critic, hidden_out_critic
         # Each DDPGAgent contains an actor and a critic. Here we have two actors, hence 2 agents
+        # network inputs can be defined during training
         
         self.maddpg_agent = [DDPGAgent(in_a, h_in_a, h_o_a, o_a, in_c_s, in_c_a, h_in_c, h_o_c,  lr_actor, lr_critic, seedn), 
                              DDPGAgent(in_a, h_in_a, h_o_a, o_a, in_c_s, in_c_a, h_in_c, h_o_c,  lr_actor, lr_critic, seedn)]
-
 
         self.discount_factor = discount_factor
         self.tau = tau
@@ -33,17 +35,13 @@ class MADDPG:
 
 
     def act(self, both_states, noise=0.0):
-        """get actions from all agents in the MADDPG object"""
-                
-        actions =  [self.maddpg_agent[idx].act(both_states[idx], noise)  for idx in range(len(self.maddpg_agent))]
-            
+        """get actions from all agents in the MADDPG object"""               
+        actions =  [self.maddpg_agent[idx].act(both_states[idx], noise)  for idx in range(len(self.maddpg_agent))]            
         return actions    
     
     
     def target_act(self, both_states, noise=0.0):
-        """get target network actions from all the agents in the MADDPG object """
-
-        
+        """get target network actions from all the agents in the MADDPG object """        
         target_actions =  [self.maddpg_agent[idx].target_act(both_states[idx], noise)  for idx in range(len(self.maddpg_agent))]        
         return target_actions
 
@@ -53,6 +51,8 @@ class MADDPG:
             ddpg_agent.reset()
     
     def transform_samples(self, samples):
+        """The MADDPG agent takes in observed sample, find predicted actions and target actions from both agents
+        and return them as output"""
         states, full_state, actions, rewards, next_states, next_full_state, dones = map(transpose_to_tensor, samples)        
         full_states = [samples[1], samples[5]]
         samples = [states, actions, rewards, next_states, dones]
@@ -67,14 +67,10 @@ class MADDPG:
             
     def update(self, samplesa, samplesb):
         """update the critics and actors of all the agents 
-       each sample has batch number of environment, each environment contains a state that can go into either agent"""
+       each sample has batch number of environment, each agent gets their own sample each time"""
 
-        # need to transpose each element of the samples
-        # to flip obs[parallel_agent][agent_number] to
-        # obs[agent_number][parallel_agent]
-        # previously, the obs contains
-        
         agents_inputs = []
+        # agent a uses samplesa , agentb uses sampleb
         agents_inputs.append(self.transform_samples(samplesa))
         agents_inputs.append(self.transform_samples(samplesb))
         
