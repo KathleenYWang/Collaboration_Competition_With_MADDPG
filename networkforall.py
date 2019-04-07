@@ -1,56 +1,86 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as f
+                        
 import numpy as np
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
 def hidden_init(layer):
+    # source: The other layers were initialized from uniform distributions
+    # [− 1/sqrt(f) , 1/sqrt(f) ] where f is the fan-in of the layer    
     fan_in = layer.weight.data.size()[0]
     lim = 1. / np.sqrt(fan_in)
     return (-lim, lim)
 
-class Network(nn.Module):
-    def __init__(self, input_dim, hidden_in_dim, hidden_out_dim, output_dim, actor=False):
-        super(Network, self).__init__()
+class Actor(nn.Module):
+    """Actor (Policy) Model."""
 
-        """self.input_norm = nn.BatchNorm1d(input_dim)
-        self.input_norm.weight.data.fill_(1)
-        self.input_norm.bias.data.fill_(0)"""
+    def __init__(self, state_size, action_size, seed, fc1_units=400, fc2_units=300):
+        """Initialize parameters and build model.
+        Params
+        ======
+            state_size (int): Dimension of each state
+            action_size (int): Dimension of each action
+            seed (int): Random seed
+            fc1_units (int): Number of nodes in first hidden layer
+            fc2_units (int): Number of nodes in second hidden layer
+        """
         
-        #self.ln0 = nn.functional.layer_norm(input_dim)
-        #self.ln0 = nn.functional.layer_norm(input_dim)
-            
-        self.fc1 = nn.utils.weight_norm(nn.Linear(input_dim,hidden_in_dim))       
-        self.fc2 = nn.utils.weight_norm(nn.Linear(hidden_in_dim,hidden_out_dim))   
-        self.fc3 = nn.utils.weight_norm(nn.Linear(hidden_out_dim,output_dim))
-        self.nonlin = f.relu #leaky_relu
-        self.actor = actor
-        #self.reset_parameters()
+        super(Actor, self).__init__()
+        self.seed = torch.manual_seed(seed)
+        # source: The low-dimensional networks had 2 hidden layers
+        self.fc1 = nn.Linear(state_size, fc1_units)
+        self.fc2 = nn.Linear(fc1_units, fc2_units)
+        self.fc3 = nn.Linear(fc2_units, action_size)
+        self.reset_parameters()
 
-
-        
+                          
     def reset_parameters(self):
         self.fc1.weight.data.uniform_(*hidden_init(self.fc1))
         self.fc2.weight.data.uniform_(*hidden_init(self.fc2))
-        self.fc3.weight.data.uniform_(-1e-3, 1e-3)
+        self.fc3.weight.data.uniform_(-3e-3, 3e-3)
 
-    def forward(self, x):
-        if self.actor:
-            # return a vector of the force
+                          
+    def forward(self, state):
+        x = F.relu(self.fc1(state))
+        x = F.relu(self.fc2(x))
+        return torch.tanh(self.fc3(x))
 
-            #x = self.ln0(x)
-            h1 = self.nonlin(self.fc1(x))
-            h2 = self.nonlin(self.fc2(h1))
-            h3 = (self.fc3(h2))
-            #norm = torch.norm(h3)
-            
-            # h3 is a 2D vector (a force that is applied to the agent)
-            # we bound the norm of the vector to be between 0 and 10
-            return f.tanh(h3)
 
+class Critic(nn.Module):
+    """Critic (Value) Model."""
+
+    def __init__(self, state_size_critic, action_size_critic, seed, fc1_units=400, fc2_units=300):
+        """Initialize parameters and build model.
+        Params
+        ======
+            state_size (int): Dimension of each state
+            action_size (int): Dimension of each action
+            seed (int): Random seed
+            fcs1_units (int): Number of nodes in the first hidden layer
+            fc2_units (int): Number of nodes in the second hidden layer
+        """
+
+        super(Critic, self).__init__()
+        self.seed = torch.manual_seed(seed)
+        self.fc1 = nn.Linear(state_size_critic+action_size_critic, fc1_units)
+        self.fc2 = nn.Linear(fc1_units, fc2_units)
+        self.fc3 = nn.Linear(fc2_units, 1)
+        self.reset_parameters()                
+                
+    def reset_parameters(self):
+        self.fc1.weight.data.uniform_(*hidden_init(self.fc1))
+        self.fc2.weight.data.uniform_(*hidden_init(self.fc2))
+        self.fc3.weight.data.uniform_(-3e-3, 3e-3)
+
+    def forward(self, state, action):
         
-        else:
-            # critic network simply outputs a number
-            h1 = self.nonlin(self.fc1(x))
-            h2 = self.nonlin(self.fc2(h1))
-            h3 = (self.fc3(h2))
-            return h3
+        xs = torch.cat((state, action.float()), dim=1)
+        x = F.relu(self.fc1(xs))
+        x = F.relu(self.fc2(x))        
+        
+        
+        return self.fc3(x)
+                          
+         
+                          
