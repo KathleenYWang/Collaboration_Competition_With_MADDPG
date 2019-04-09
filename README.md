@@ -13,7 +13,7 @@ For this project, we will use Multi-agent Deep Deterministic Policy Gradients to
 
 In this environment, two agents control rackets to bounce a ball over a net. If an agent hits the ball over the net, it receives a reward of +0.1.  If an agent lets a ball hit the ground or hits the ball out of bounds, it receives a reward of -0.01.  Thus, the goal of each agent is to keep the ball in play.
 
-The observation space consists of 8 variables corresponding to the position and velocity of the ball and racket. Each agent receives its own, local observation.  Two continuous actions are available, corresponding to movement toward (or away from) the net, and jumping. 
+The observation space consists of 24 variables corresponding to the position and velocity of the ball and racket. Each agent receives its own, local observation.  Two continuous actions are available, corresponding to movement toward (or away from) the net, and jumping. 
 
 The task is episodic, and in order to solve the environment, your agents must get an average score of +0.5 (over 100 consecutive episodes, after taking the maximum over both agents). Specifically,
 
@@ -45,4 +45,4 @@ For this project, you will not need to install Unity - this is because it has be
 
 ### Contents
 
-To train an agent, start with `Report.ipynb`, which contains a walkthrough of the key concepts. `maddpg.py` contains the multi-agent framework whereas `ddpg_agent.py` contains the core algorithm used to build individual DDPG agent. `networkforall.py` contains the deep neural nets that is used to model actor and critic for all. For more complex experiment, seperate networks can be used for different purposes, but for this project, only one type is used for simplicity. `checkpoint_actor.pth` and `checkpoint_critic.pth` contains the weights of the trained models. Training takes quite a long time on CPU.
+To train an agent, start with `Report.ipynb`, which contains a walkthrough of the key concepts. `maddpg.py` contains the multi-agent framework whereas `ddpg.py` contains the core algorithm used to build individual DDPG agent. `networkforall.py` contains the deep neural nets that is used to model actor and critic for both agents. `checkpoint.pth`  contains the weights of the trained models. Training takes quite a long time on CPU.
